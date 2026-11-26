@@ -48,23 +48,49 @@ export function StoryboardSvg({
   const { mode, src, ref } = getShotImage(shot, project);
 
   const scaleMap = { EWS: 0.48, WS: 0.75, OTS: 1.05, MS: 1.25, CU: 1.95, ECU: 2.75 };
-  const baseScale = scaleMap[shot.shotType] || 1.15;
+  const defaultFocalMap = { EWS: 20, WS: 24, OTS: 28, MS: 35, CU: 50, ECU: 85 };
+  const typeBaseScale = scaleMap[shot.shotType] || 1.15;
+  const typeDefaultFocal = defaultFocalMap[shot.shotType] || 35;
+  const actualFocal = Number(shot.focalLength) || typeDefaultFocal;
+  // Smooth continuous lens factor so sliding Lens (mm) zooms the frame in real time
+  const lensFactor = Math.max(0.55, Math.min(2.4, Math.pow(actualFocal / typeDefaultFocal, 0.55)));
+  const baseScale = typeBaseScale * lensFactor;
 
-  let panX = 0, panY = 0, zoomMult = 1;
+  let panX = (Number(shot.frameOffsetX) || 0) * 1.5;
+  let panY = (Number(shot.frameOffsetY) || 0) * 1.5;
+  let zoomMult = 1;
   if (animProgress > 0) {
-    if (/push/i.test(shot.cameraMove)) zoomMult = 1 + animProgress * 0.18;
-    if (/pull/i.test(shot.cameraMove)) zoomMult = 1.18 - animProgress * 0.18;
-    if (/pan|dolly|follow|orbit/i.test(shot.cameraMove)) panX = (animProgress - 0.5) * 36;
-    if (/crane/i.test(shot.cameraMove)) panY = (0.5 - animProgress) * 28;
+    if (/push/i.test(shot.cameraMove)) zoomMult = 1 + animProgress * 0.22;
+    if (/pull/i.test(shot.cameraMove)) zoomMult = 1.22 - animProgress * 0.22;
+    if (/pan|dolly|follow|orbit/i.test(shot.cameraMove)) panX += (animProgress - 0.5) * 44;
+    if (/crane/i.test(shot.cameraMove)) panY += (0.5 - animProgress) * 34;
   }
   const finalScale = baseScale * zoomMult;
-  const horizonY = /low|worm/i.test(shot.cameraAngle) ? 235 : /high|bird/i.test(shot.cameraAngle) ? 110 : 175;
-  const dutchAngle = /dutch/i.test(shot.cameraAngle) ? -7 : 0;
+
+  // Continuous camera pitch / elevation (-35 deg low worm's-eye to +40 deg bird's-eye)
+  const defaultPitch =
+    /worm/i.test(shot.cameraAngle)
+      ? -30
+      : /low/i.test(shot.cameraAngle)
+      ? -16
+      : /bird/i.test(shot.cameraAngle)
+      ? 32
+      : /high/i.test(shot.cameraAngle)
+      ? 16
+      : 0;
+  const pitchDeg = shot.pitchDeg !== undefined ? Number(shot.pitchDeg) : defaultPitch;
+  const horizonY = Math.max(70, Math.min(285, 175 - pitchDeg * 2.5));
+
+  // Continuous Dutch roll angle (-25 deg to +25 deg)
+  const defaultDutch = /dutch/i.test(shot.cameraAngle) ? -9 : 0;
+  const dutchAngle = shot.dutchDeg !== undefined ? Number(shot.dutchDeg) : defaultDutch;
 
   // Reference image framing
   const focus = ref?.focus || { x: 50, y: 45 };
   const refScale =
-    mode === 'ai' || shot.refAutoFrame === false ? zoomMult : (REF_FRAME_SCALE[shot.shotType] || 1.2) * zoomMult;
+    mode === 'ai' || shot.refAutoFrame === false
+      ? zoomMult * lensFactor
+      : (REF_FRAME_SCALE[shot.shotType] || 1.2) * lensFactor * zoomMult;
   const cx = (focus.x / 100) * 640;
   const cy = (focus.y / 100) * 360;
 
@@ -256,6 +282,15 @@ export function StoryboardSvg({
   );
 }
 
+export function pitchToAngleLabel(pitch, dutch = 0) {
+  if (Math.abs(dutch) >= 6) return 'Dutch Tilt';
+  if (pitch <= -24) return "Low Worm's-Eye";
+  if (pitch <= -8) return 'Low Angle';
+  if (pitch >= 24) return "High Bird's-Eye";
+  if (pitch >= 8) return 'High Angle';
+  return 'Eye-Level';
+}
+
 export default function StoryboardCanvas({
   shot,
   project,
@@ -264,15 +299,83 @@ export default function StoryboardCanvas({
   showCameraArrows = true,
   showBadges = true,
   animProgress = 0,
+  onUpdateShot = null,
   className = ''
 }) {
   if (!shot) return null;
   const mood = resolveMood(project, moodOverride);
   const { mode } = getShotImage(shot, project);
+  const [dragState, setDragState] = React.useState(null);
+
+  const handlePointerDown = (e) => {
+    if (!onUpdateShot) return;
+    if (e.target.closest('button, input, select')) return;
+    const defaultPitch =
+      /worm/i.test(shot.cameraAngle) ? -30 : /low/i.test(shot.cameraAngle) ? -16 : /bird/i.test(shot.cameraAngle) ? 32 : /high/i.test(shot.cameraAngle) ? 16 : 0;
+    setDragState({
+      startX: e.clientX,
+      startY: e.clientY,
+      initOffsetX: Number(shot.frameOffsetX) || 0,
+      initPitch: shot.pitchDeg !== undefined ? Number(shot.pitchDeg) : defaultPitch,
+      initDutch: shot.dutchDeg !== undefined ? Number(shot.dutchDeg) : (/dutch/i.test(shot.cameraAngle) ? -9 : 0),
+      shiftKey: e.shiftKey
+    });
+  };
+
+  const handlePointerMove = (e) => {
+    if (!dragState || !onUpdateShot) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if (e.shiftKey || dragState.shiftKey) {
+      // Shift + Drag = roll Dutch tilt
+      const nextDutch = Math.max(-25, Math.min(25, Math.round(dragState.initDutch + dx * 0.15)));
+      onUpdateShot(shot.id, {
+        dutchDeg: nextDutch,
+        cameraAngle: pitchToAngleLabel(dragState.initPitch, nextDutch)
+      });
+    } else {
+      // Normal drag = pan subject X + tilt camera angle/elevation Y
+      const nextOffsetX = Math.max(-60, Math.min(60, Math.round(dragState.initOffsetX + dx * 0.35)));
+      const nextPitch = Math.max(-35, Math.min(40, Math.round(dragState.initPitch + dy * 0.25)));
+      const zHeight = Number(Math.max(0.25, Math.min(5.5, 1.45 + nextPitch * 0.055)).toFixed(2));
+      const cStart = [...(shot.camStart || [0, -3.5, 1.45])];
+      const cEnd = [...(shot.camEnd || cStart)];
+      cStart[2] = zHeight;
+      cEnd[2] = zHeight;
+      onUpdateShot(shot.id, {
+        frameOffsetX: nextOffsetX,
+        pitchDeg: nextPitch,
+        cameraAngle: pitchToAngleLabel(nextPitch, dragState.initDutch),
+        camStart: cStart,
+        camEnd: cEnd
+      });
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (dragState) setDragState(null);
+  };
+
+  const handleWheel = (e) => {
+    if (!onUpdateShot) return;
+    e.preventDefault();
+    const cur = Number(shot.focalLength) || 35;
+    const step = e.deltaY < 0 ? 4 : -4;
+    const nextFocal = Math.max(14, Math.min(135, cur + step));
+    onUpdateShot(shot.id, { focalLength: nextFocal });
+  };
 
   return (
     <div
-      className={`group/board relative aspect-video w-full overflow-hidden rounded-2xl bg-black ring-1 ring-white/10 select-none ${className}`}
+      onMouseDown={handlePointerDown}
+      onMouseMove={handlePointerMove}
+      onMouseUp={handlePointerUp}
+      onMouseLeave={handlePointerUp}
+      onWheel={onUpdateShot ? handleWheel : undefined}
+      title={onUpdateShot ? 'Drag frame to tilt camera angle & pan · Shift+Drag to roll Dutch angle · Scroll wheel to zoom lens (mm)' : undefined}
+      className={`group/board relative aspect-video w-full overflow-hidden rounded-2xl bg-black ring-1 ring-white/10 select-none ${
+        onUpdateShot ? (dragState ? 'cursor-grabbing ring-2 ring-[color:var(--accent)]' : 'cursor-grab') : ''
+      } ${className}`}
       style={{ filter: mood.svgFilter }}
     >
       <StoryboardSvg
@@ -303,10 +406,16 @@ export default function StoryboardCanvas({
           </div>
           <div className="pointer-events-none absolute bottom-2.5 right-2.5 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 font-mono text-[10.5px] text-white/70 ring-1 ring-white/15 backdrop-blur-md">
             <span>{shot.cameraAngle}</span>
+            {shot.dutchDeg ? <span className="text-amber-300">({shot.dutchDeg > 0 ? `+${shot.dutchDeg}` : shot.dutchDeg}°)</span> : null}
             <span className="text-white/30">→</span>
             <span className="text-amber-200">{shot.cameraMove}</span>
             <span className="ml-1 rounded-full bg-amber-400/25 px-1.5 font-semibold text-amber-200">{Number(shot.duration).toFixed(1)}s</span>
           </div>
+          {onUpdateShot && (
+            <div className="pointer-events-none absolute right-2.5 top-2.5 rounded-full bg-black/65 px-2.5 py-1 font-mono text-[9.5px] text-white/70 opacity-0 ring-1 ring-white/15 backdrop-blur-md transition group-hover/board:opacity-100">
+              ✋ Drag: Angle/Pan · Shift+Drag: Dutch · Wheel: Lens
+            </div>
+          )}
         </>
       )}
     </div>
