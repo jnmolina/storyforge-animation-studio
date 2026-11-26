@@ -215,6 +215,11 @@ namespace StoryForgePortable
 
         static void RouteRequest(NetworkStream stream, string method, string fullPath, string body)
         {
+            if (method == "OPTIONS")
+            {
+                WriteResponse(stream, "204 No Content", "text/plain", new byte[0]);
+                return;
+            }
             var ser = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
             string pathOnly = fullPath.Split('?')[0];
 
@@ -319,7 +324,7 @@ namespace StoryForgePortable
 
         static void WriteResponse(NetworkStream stream, string status, string contentType, byte[] body)
         {
-            string hdr = "HTTP/1.1 " + status + "\r\nContent-Type: " + contentType + "\r\nContent-Length: " + body.Length + "\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n";
+            string hdr = "HTTP/1.1 " + status + "\r\nContent-Type: " + contentType + "\r\nContent-Length: " + body.Length + "\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nAccess-Control-Allow-Private-Network: true\r\nConnection: close\r\n\r\n";
             byte[] hBytes = Encoding.ASCII.GetBytes(hdr);
             stream.Write(hBytes, 0, hBytes.Length);
             stream.Write(body, 0, body.Length);

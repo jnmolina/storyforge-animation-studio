@@ -124,13 +124,41 @@ export default function App() {
     return { shotIndex: 0, shot: shots[0], localProgress: 0 };
   }, [project.shots, playheadSec]);
 
-  // ---------- Blender ----------
+  // ---------- Blender (supports both local dev/EXE and hosted GitHub Pages -> 127.0.0.1:3001 bridge) ----------
+  const fetchBlenderApi = async (endpoint, options = {}) => {
+    const isHosted = typeof window !== 'undefined' && !/^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+    const bases = isHosted ? ['http://127.0.0.1:3001', ''] : ['', 'http://127.0.0.1:3001'];
+    let lastErr = null;
+    for (const base of bases) {
+      try {
+        const res = await fetch(`${base}${endpoint}`, options);
+        const ct = res.headers.get('content-type') || '';
+        if (res.status === 405 || res.status === 404 || !ct.includes('application/json')) {
+          lastErr = new Error(`Local bridge not active (${res.status})`);
+          continue;
+        }
+        return await res.json();
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error('Local Blender bridge unreachable');
+  };
+
   const checkBlenderBridge = async () => {
     try {
-      const r = await fetch('/api/blender/status');
-      setBlenderStatus(await r.json());
+      const data = await fetchBlenderApi('/api/blender/status');
+      setBlenderStatus({ ...data, bridgeOnline: true });
     } catch {
-      setBlenderStatus({ connected: false, port: 9876, message: 'Backend offline — run `npm run server`.' });
+      const isHosted = typeof window !== 'undefined' && !/^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+      setBlenderStatus({
+        connected: false,
+        bridgeOnline: false,
+        port: 9876,
+        message: isHosted
+          ? 'Hosted Web App mode: Run StoryForge-Portable.exe locally for 1-click live Blender push, or click any button to download/copy the .py script.'
+          : 'Local bridge offline — run StoryForge-Portable.exe or `npm run server`.'
+      });
     }
   };
   useEffect(() => {
@@ -140,12 +168,26 @@ export default function App() {
   const postBlender = async (path) => {
     setBlenderBusy(true);
     try {
-      const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: blenderPythonCode, port: blenderStatus.port || 9876 }) });
-      const d = await r.json();
+      const d = await fetchBlenderApi(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: blenderPythonCode, port: blenderStatus.port || 9876 })
+      });
       notify(d.message || d.error, d.ok ? 'success' : 'error');
       checkBlenderBridge();
-    } catch (e) {
-      notify(e.message, 'error');
+    } catch {
+      // Graceful fallback on GitHub Pages when local bridge isn't running:
+      // automatically download storyforge_previz.py and copy code to clipboard!
+      try {
+        await navigator.clipboard?.writeText(blenderPythonCode);
+      } catch {
+        /* ignore clipboard permission */
+      }
+      await downloadStepFile('previz', 'storyforge_previz.py', exportCtx());
+      notify(
+        'Downloaded storyforge_previz.py & copied script! (For live 1-click push from the web app, run StoryForge-Portable.exe in the background.)',
+        'success'
+      );
     } finally {
       setBlenderBusy(false);
     }
@@ -227,11 +269,22 @@ export default function App() {
     try {
       const prompt = `Create an animation short story project JSON with complexity tier "${project.tier}" based on seed: "${customSeedInput || project.logline}".
 Return JSON: {"title","logline","theme","hook","conflict","resolution","moodKey":"warm|cold|dark|light","characters":[{"id","name","archetype","silhouette","motivation","quirk","colorHex"}],"environment":{"name","settingType","timeOfDay","props":[4 strings],"groundColor","horizonColor"},"shots":[{"id","number","title","shotType":"EWS|WS|MS|CU|ECU|OTS","shotTypeName","cameraAngle":"Eye-Level|Low Angle|High Angle|Dutch Tilt","cameraMove":"Static Locked|Slow Push-In|Slow Pull-Back|Tracking Dolly|Whip Pan|Arc Orbit|Fast Crane Up","focalLength":35,"duration":2.4,"action","dialogue","soundCue","subjectPos":[x,y,z],"camStart":[x,y,z],"camEnd":[x,y,z],"notes"}]}. Blender coords in meters, Z up, camera in front of subject (negative Y).`;
-      const r = await fetch('/api/ai/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, apiKey: geminiApiKey }) });
-      const d = await r.json();
-      if (!d.ok) return notify(d.error || 'Gemini failed', 'error');
-      const shots = (d.data.shots || []).map((s, i) => ({ ...s, id: `shot-ai-${Date.now()}-${i}`, number: i + 1 }));
-      resetTo({ ...project, ...d.data, shots: shots.length ? shots : project.shots, id: `ai-${Date.now()}` }, 'AI story, cast and shots generated');
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.85, responseMimeType: 'application/json' }
+          })
+        }
+      );
+      const raw = await r.json();
+      if (!r.ok) return notify(raw?.error?.message || 'Gemini failed', 'error');
+      const parsed = JSON.parse(raw?.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+      const shots = (parsed.shots || []).map((s, i) => ({ ...s, id: `shot-ai-${Date.now()}-${i}`, number: i + 1 }));
+      resetTo({ ...project, ...parsed, shots: shots.length ? shots : project.shots, id: `ai-${Date.now()}` }, 'AI story, cast and shots generated');
     } catch (e) {
       notify(e.message, 'error');
     } finally {
@@ -335,10 +388,29 @@ Action: ${shot.action}
 Setting: ${project.environment?.name}, ${project.environment?.timeOfDay}. Characters: ${(project.characters || []).map((c) => `${c.name} (${c.silhouette})`).join('; ')}.
 Lighting mood: ${mood.name} — ${mood.lightingNotes}${ref ? '\nUse the attached reference image for composition, environment and lighting cues.' : ''}`;
     try {
-      const r = await fetch('/api/ai/storyboard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: geminiApiKey, prompt, imageDataUrl: ref?.src }) });
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error);
-      updateShot(shot.id, { aiImage: d.dataUrl, refMode: 'ai' });
+      const parts = [{ text: prompt }];
+      if (ref?.src && ref.src.startsWith('data:')) {
+        const [meta, b64] = ref.src.split(',');
+        parts.push({ inlineData: { mimeType: meta.slice(5).split(';')[0], data: b64 } });
+      }
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-nano-banana-2.1:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts }],
+            generationConfig: { responseModalities: ['IMAGE', 'TEXT'], imageConfig: { aspectRatio: '16:9' } }
+          })
+        }
+      );
+      const raw = await r.json();
+      if (!r.ok) throw new Error(raw?.error?.message || `HTTP ${r.status}`);
+      const imgPart = (raw?.candidates?.[0]?.content?.parts || []).find((p) => p.inlineData || p.inline_data);
+      const inline = imgPart?.inlineData || imgPart?.inline_data;
+      if (!inline) throw new Error('Model returned no image');
+      const dataUrl = `data:${inline.mimeType || inline.mime_type};base64,${inline.data}`;
+      updateShot(shot.id, { aiImage: dataUrl, refMode: 'ai' });
       notify(`AI board drawn for SH${shot.number}`);
     } catch (e) {
       notify(`AI board failed: ${e.message}`, 'error');
