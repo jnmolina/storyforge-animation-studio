@@ -109,13 +109,23 @@ export async function renderPanelPng(shot, project, { moodKey, width = 1280, sla
 // Text exporters
 // ---------------------------------------------------------------------------
 function storyMarkdown(p) {
+  const sl = p.plotSlots || {};
   return `# ${p.title}
 
 **Tier:** ${p.tier}  ·  **Mood:** ${resolveMood(p).name}  ·  **Shots:** ${p.shots.length}
 
 > ${p.logline}
 
-**Theme:** ${p.theme}
+**Theme & Emotional Arc:** ${p.theme}
+
+## Plot, Acting & Cinematography Matrix
+- **Protagonist & Stake:** ${sl.protagonist || '—'}
+- **Core Action / 51-Exercises Drill:** ${sl.activity || '—'}
+- **Midpoint Complication:** ${sl.complication || '—'}
+- **3-Beat Emotional Arc:** ${sl.emotionArc || '—'}
+- **Line of Action & Acting Subtext:** ${sl.actingCue || '—'}
+- **Camera Grammar & Lighting Style:** ${sl.cinemaStyle || '—'}
+- **Payoff Beat:** ${sl.payoff || '—'}
 
 ## Story Spine
 1. **Hook** — ${p.hook}
@@ -123,7 +133,7 @@ function storyMarkdown(p) {
 3. **Payoff / Release** — ${p.resolution}
 
 ## Beat List
-${p.shots.map((s) => `- **SH${pad(s.number)} ${s.title}** (${s.duration}s) — ${s.action}`).join('\n')}
+${p.shots.map((s) => `- **SH${pad(s.number)} ${s.title}** (${s.shotType} · ${s.focalLength}mm · ${s.cameraMove} · ${s.duration}s) — ${s.action}`).join('\n')}
 `;
 }
 
@@ -282,7 +292,7 @@ export async function buildStepFiles(stepId, ctx) {
       add('story.md', storyMarkdown(p));
       add(
         'story.json',
-        JSON.stringify({ title: p.title, tier: p.tier, logline: p.logline, theme: p.theme, hook: p.hook, conflict: p.conflict, resolution: p.resolution }, null, 2)
+        JSON.stringify({ title: p.title, tier: p.tier, exerciseId: p.exerciseId || null, logline: p.logline, theme: p.theme, plotSlots: p.plotSlots || {}, hook: p.hook, conflict: p.conflict, resolution: p.resolution }, null, 2)
       );
       break;
 

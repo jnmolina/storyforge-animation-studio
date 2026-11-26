@@ -129,11 +129,17 @@ export default function StoryboardStage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a className="btn btn-ghost btn-sm" target="_blank" rel="noreferrer" href={`https://www.pexels.com/search/${encodeURIComponent(project.title)}/`}>
-            <ExternalLink className="h-3 w-3" /> Pexels
+          <a className="btn btn-ghost btn-sm" target="_blank" rel="noreferrer" href="https://livlily.blogspot.com/" title="Living Lines Library — Model Sheets, Storyboards & Layouts">
+            <ExternalLink className="h-3 w-3" /> Living Lines
+          </a>
+          <a className="btn btn-ghost btn-sm" target="_blank" rel="noreferrer" href="https://design.tutsplus.com/tutorials/storyboarding-part-2-lingo-camera-shots-techniques--cms-31171" title="Tuts+ Storyboarding Lingo & Camera Shots">
+            <ExternalLink className="h-3 w-3" /> Tuts+ Camera Lingo
           </a>
           <a className="btn btn-ghost btn-sm" target="_blank" rel="noreferrer" href={`https://film-grab.com/?s=${encodeURIComponent(q)}`}>
             <ExternalLink className="h-3 w-3" /> Film-Grab
+          </a>
+          <a className="btn btn-ghost btn-sm" target="_blank" rel="noreferrer" href={`https://www.pexels.com/search/${encodeURIComponent(project.title)}/`}>
+            <ExternalLink className="h-3 w-3" /> Pexels
           </a>
           <button className="btn btn-ghost btn-sm" onClick={addShot}>
             <Plus className="h-3.5 w-3.5" /> Panel
