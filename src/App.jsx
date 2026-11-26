@@ -507,14 +507,14 @@ Lighting mood: ${mood.name} — ${mood.lightingNotes}${ref ? '\nUse the attached
         {/* Main */}
         <div className="relative z-10 lg:pl-[272px]">
           <header className="sticky top-0 z-20 border-b border-white/[0.05] bg-[#07060b]/70 backdrop-blur-xl">
-            <div className="mx-auto flex max-w-[1500px] items-center gap-3 px-5 py-3 md:px-8">
-              <button className="text-white/60 lg:hidden" onClick={() => setNavOpen(true)}>
+            <div className="mx-auto flex max-w-[1500px] items-center gap-2 sm:gap-3 px-3.5 py-2.5 sm:px-5 sm:py-3 md:px-8">
+              <button className="shrink-0 text-white/60 lg:hidden" onClick={() => setNavOpen(true)} aria-label="Open menu">
                 <Menu className="h-5 w-5" />
               </button>
               <div className="flex min-w-0 items-center gap-2 text-sm">
-                <span className="hidden text-white/35 sm:inline">{project.title.split('(')[0].trim()}</span>
+                <span className="hidden truncate text-white/35 sm:inline max-w-[180px]">{project.title.split('(')[0].trim()}</span>
                 <span className="hidden text-white/20 sm:inline">/</span>
-                <span className="font-semibold text-white">{step.label}</span>
+                <span className="truncate font-semibold text-white">{step.label}</span>
               </div>
               {/* progress */}
               <div className="ml-4 hidden flex-1 items-center gap-1 md:flex">
@@ -528,13 +528,14 @@ Lighting mood: ${mood.name} — ${mood.lightingNotes}${ref ? '\nUse the attached
                   />
                 ))}
               </div>
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <div className="relative">
-                  <button onClick={() => setShowKey(!showKey)} className={`btn btn-sm ${geminiApiKey ? 'btn-accent-soft' : 'btn-ghost'}`}>
-                    <KeyRound className="h-3.5 w-3.5" /> {geminiApiKey ? 'AI on' : 'AI key'}
+                  <button onClick={() => setShowKey(!showKey)} className={`btn btn-sm px-2.5 sm:px-3 ${geminiApiKey ? 'btn-accent-soft' : 'btn-ghost'}`} title="Gemini AI Key">
+                    <KeyRound className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{geminiApiKey ? 'AI on' : 'AI key'}</span>
                   </button>
                   {showKey && (
-                    <div className="glass animate-rise absolute right-0 top-11 z-50 w-80 p-4">
+                    <div className="glass animate-rise absolute right-0 top-11 z-50 w-72 sm:w-80 p-4">
                       <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
                         <Wand2 className="h-4 w-4 text-accent" /> Optional Gemini key
                       </div>
@@ -547,12 +548,15 @@ Lighting mood: ${mood.name} — ${mood.lightingNotes}${ref ? '\nUse the attached
                   )}
                 </div>
                 {exportable && (
-                  <button className="btn btn-ghost btn-sm" onClick={() => runExportStep(step.id)} disabled={!!exportBusy} title="Export this stage as offline files">
-                    {exportBusy === step.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Export stage
+                  <button className="btn btn-ghost btn-sm px-2.5 sm:px-3" onClick={() => runExportStep(step.id)} disabled={!!exportBusy} title="Export this stage as offline files">
+                    {exportBusy === step.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">Export stage</span>
                   </button>
                 )}
-                <button className="btn btn-primary btn-sm" onClick={() => go('previz')}>
-                  <Box className="h-3.5 w-3.5" /> Send to Blender
+                <button className="btn btn-primary btn-sm px-2.5 sm:px-3" onClick={() => go('previz')} title="Send to Blender">
+                  <Box className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Send to Blender</span>
+                  <span className="sm:hidden">Blender</span>
                 </button>
               </div>
             </div>
