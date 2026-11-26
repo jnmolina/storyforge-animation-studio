@@ -130,32 +130,37 @@ def build_storyforge_previz():
     back_wall.data.materials.append(wall_mat)
     link_only_to_collection(back_wall, previz_col)
 
-    # Create recognizable simple props from project environment with their chosen layout shapes
+    # Create recognizable simple props from project environment with their chosen layout shapes & slider sizes
     props = PROJECT_DATA["environment"].get("props", [])
     prop_shapes = PROJECT_DATA["environment"].get("propShapes", [])
+    prop_scales = PROJECT_DATA["environment"].get("propScales", [])
     for idx, prop_label in enumerate(props[:4]):
         px = -2.2 + idx * 1.5
         py = 1.6 if idx % 2 == 0 else 0.8
         p_shape = prop_shapes[idx] if idx < len(prop_shapes) else "box"
+        p_sc = prop_scales[idx] if idx < len(prop_scales) else {}
+        pw = float(p_sc.get("w", 1.0)) if isinstance(p_sc, dict) else 1.0
+        ph = float(p_sc.get("h", 0.9)) if isinstance(p_sc, dict) else 0.9
         if p_shape == "circle":
-            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.5, location=(px, py, 0.5))
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.5, location=(px, py, 0.5 * ph))
+            bpy.context.active_object.scale = (pw, pw, ph)
         elif p_shape == "triangle":
-            bpy.ops.mesh.primitive_cone_add(radius1=0.55, depth=1.1, location=(px, py, 0.55))
+            bpy.ops.mesh.primitive_cone_add(radius1=0.55 * pw, depth=1.1 * ph, location=(px, py, 0.55 * ph))
         elif p_shape == "tall":
-            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, py, 1.0))
-            bpy.context.active_object.scale = (0.85, 0.35, 2.0)
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, py, 0.5 * ph))
+            bpy.context.active_object.scale = (pw, 0.4, ph)
         elif p_shape == "wide":
-            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, py, 0.4))
-            bpy.context.active_object.scale = (1.6, 0.75, 0.8)
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, py, 0.5 * ph))
+            bpy.context.active_object.scale = (pw, 0.75, ph)
         else:
-            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, py, 0.45))
-            bpy.context.active_object.scale = (0.9, 0.6, 0.9)
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, py, 0.5 * ph))
+            bpy.context.active_object.scale = (pw, 0.65 * pw, ph)
         p_obj = bpy.context.active_object
         p_obj.name = f"SF_Prop_{idx+1}_{prop_label[:14].replace(' ', '_')}"
         p_obj.data.materials.append(prop_mat if idx % 2 == 0 else accent_mat)
         link_only_to_collection(p_obj, previz_col)
 
-    # 3. Create Character Proxy Mannequins matching Shape Language (circle/square/triangle) & Body Type (tall/short/thin/wide/round/boxy)
+    # 3. Create Character Proxy Mannequins matching Shape Language (circle/square/triangle), Body Preset & Custom Size Sliders
     char_rigs = []
     characters = PROJECT_DATA.get("characters", [])
     if not characters:
@@ -174,7 +179,11 @@ def build_storyforge_previz():
         c_name = char_data.get("name", f"Char_{c_idx+1}")
         c_shape = char_data.get("shape", "circle")
         c_body = char_data.get("bodyType", "tall")
-        bx, by, bz = body_Presets.get(c_body, (1.0, 1.0, 1.0))
+        def_bx, def_by, def_bz = body_Presets.get(c_body, (1.0, 1.0, 1.0))
+        bx = float(char_data.get("customWidth", def_bx))
+        by = bx * 0.9
+        bz = float(char_data.get("customHeightM", def_bz * 1.65)) / 1.65
+        head_mult = float(char_data.get("customHead", 1.0))
         c_mat = make_material(f"SF_CharMat_{c_name}", hex_to_rgb(char_data.get("colorHex", "#F59E0B")), roughness=0.35)
 
         root = bpy.data.objects.new(f"SF_Char_{c_name}_Root", None)
@@ -202,13 +211,13 @@ def build_storyforge_previz():
         torso.parent = root
         link_only_to_collection(torso, previz_col)
 
-        # Head matching shape language
+        # Head matching shape language & Head Size Slider
         if c_shape == "square" or c_body == "boxy":
-            bpy.ops.mesh.primitive_cube_add(size=0.44, location=(0, 0, head_z))
+            bpy.ops.mesh.primitive_cube_add(size=0.44 * head_mult, location=(0, 0, head_z))
         elif c_shape == "triangle":
-            bpy.ops.mesh.primitive_cone_add(radius1=0.26, depth=0.48, location=(0, 0, head_z))
+            bpy.ops.mesh.primitive_cone_add(radius1=0.26 * head_mult, depth=0.48 * head_mult, location=(0, 0, head_z))
         else:
-            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.24, location=(0, 0, head_z))
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.24 * head_mult, location=(0, 0, head_z))
         head = bpy.context.active_object
         head.name = f"SF_Char_{c_name}_Head_{c_shape}"
         head.data.materials.append(c_mat)

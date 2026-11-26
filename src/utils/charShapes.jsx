@@ -41,7 +41,7 @@ export const CHAR_BODY_TYPES = [
     heightM: 1.15,
     wMult: 0.95,
     hMult: 0.68,
-    headMult: 1.18,
+    headMult: 1.22,
     legMult: 0.62,
     scale: [0.95, 0.95, 1.15]
   },
@@ -49,11 +49,11 @@ export const CHAR_BODY_TYPES = [
     id: 'thin',
     label: 'Thin',
     heightM: 1.85,
-    wMult: 0.54,
+    wMult: 0.52,
     hMult: 1.14,
     headMult: 0.88,
     legMult: 1.25,
-    scale: [0.54, 0.54, 1.85]
+    scale: [0.52, 0.52, 1.85]
   },
   {
     id: 'wide',
@@ -69,11 +69,11 @@ export const CHAR_BODY_TYPES = [
     id: 'round',
     label: 'Round',
     heightM: 1.45,
-    wMult: 1.42,
+    wMult: 1.45,
     hMult: 0.86,
-    headMult: 1.12,
+    headMult: 1.14,
     legMult: 0.72,
-    scale: [1.42, 1.42, 1.45]
+    scale: [1.45, 1.45, 1.45]
   },
   {
     id: 'boxy',
@@ -95,15 +95,44 @@ export const PROP_SHAPES = [
   { id: 'wide', label: 'Wide Bench / Car', icon: '▬', w: 1.85, h: 0.75 }
 ];
 
+/**
+ * Computes effective character dimensions combining the active Body Type Preset
+ * with any fine-tuned custom sliders (customHeightM, customWidth, customHead, customLegs).
+ */
+export function getCharDimensions(char = {}) {
+  const preset = CHAR_BODY_TYPES.find((b) => b.id === char.bodyType) || CHAR_BODY_TYPES[0];
+  const heightM = char.customHeightM !== undefined ? Number(char.customHeightM) : preset.heightM;
+  const wMult = char.customWidth !== undefined ? Number(char.customWidth) : preset.wMult;
+  const headMult = char.customHead !== undefined ? Number(char.customHead) : preset.headMult;
+  const legMult = char.customLegs !== undefined ? Number(char.customLegs) : preset.legMult;
+  // Derive torso height multiplier from total heightM and leg ratio
+  const hMult = Number(Math.max(0.45, Math.min(1.75, (heightM / 1.7) * 0.98)).toFixed(2));
+  const scale = [
+    Number(wMult.toFixed(2)),
+    Number(Math.min(1.5, wMult * 0.9).toFixed(2)),
+    Number(heightM.toFixed(2))
+  ];
+  return {
+    presetId: preset.id,
+    presetLabel: preset.label,
+    heightM,
+    wMult,
+    hMult,
+    headMult,
+    legMult,
+    scale
+  };
+}
+
 export function getCharSpec(char = {}) {
   const shape = CHAR_SHAPES.find((s) => s.id === char.shape) || CHAR_SHAPES[0];
-  const body = CHAR_BODY_TYPES.find((b) => b.id === char.bodyType) || CHAR_BODY_TYPES[0];
+  const body = getCharDimensions(char);
   return { shape, body };
 }
 
 /**
  * Renders a character SVG group with feet planted at (0, 42) so height/width
- * differences (tall, short, thin, wide, round, boxy) and shape language
+ * differences (from presets OR continuous sliders) and shape language
  * (circle, square, triangle) read unmistakably in Storyboards & Lineup charts.
  */
 export function CharacterShapeSvg({
@@ -113,48 +142,41 @@ export function CharacterShapeSvg({
   showCrosshairs = true
 }) {
   const color = char.colorHex || '#F59E0B';
-  const shapeId = char.shape || (char.bodyType === 'boxy' ? 'square' : char.bodyType === 'round' ? 'circle' : 'circle');
-  const bodySpec = CHAR_BODY_TYPES.find((b) => b.id === char.bodyType) || {
-    id: 'standard',
-    wMult: 1.0,
-    hMult: 1.0,
-    headMult: 1.0,
-    legMult: 1.0
-  };
+  const shapeId = char.shape || (char.bodyType === 'boxy' ? 'square' : 'circle');
+  const dims = getCharDimensions(char);
 
   // Ground plane is at y = 42
   const groundY = 42;
-  const legLen = 24 * bodySpec.legMult;
+  const legLen = 24 * dims.legMult;
   const hipY = groundY - legLen;
-  const torsoH = 58 * bodySpec.hMult;
-  const torsoW = 28 * bodySpec.wMult;
+  const torsoH = 56 * dims.hMult;
+  const torsoW = 27 * dims.wMult;
   const shoulderY = hipY - torsoH;
-  const headR = 20 * bodySpec.headMult;
+  const headR = 20 * dims.headMult;
   const headCenterY = shoulderY - headR * 0.95;
 
   const strokeCol = palette[0] || '#FFFFFF';
   const darkCol = palette[4] || '#0F172A';
   const headFill = palette[1] || '#FDE68A';
 
-  // Render Torso Path based on Shape Language (circle / square / triangle) + Body Type
+  // Render Torso Path based on Shape Language (circle / square / triangle) + Sliders
   let torsoElement = null;
-  if (shapeId === 'square' || bodySpec.id === 'boxy') {
+  if (shapeId === 'square') {
     torsoElement = (
       <rect
         x={-torsoW}
         y={shoulderY}
         width={torsoW * 2}
         height={torsoH}
-        rx={bodySpec.id === 'boxy' ? 4 : 8}
+        rx={char.bodyType === 'boxy' ? 4 : 8}
         fill={color}
         stroke={strokeCol}
         strokeWidth="2.2"
       />
     );
   } else if (shapeId === 'triangle') {
-    // Wide-to-narrow or narrow-to-wide triangle torso
-    const topW = bodySpec.id === 'wide' ? torsoW * 1.25 : torsoW * 0.45;
-    const botW = bodySpec.id === 'wide' ? torsoW * 0.55 : torsoW * 1.25;
+    const topW = dims.wMult >= 1.25 ? torsoW * 1.25 : torsoW * 0.45;
+    const botW = dims.wMult >= 1.25 ? torsoW * 0.55 : torsoW * 1.25;
     torsoElement = (
       <polygon
         points={`${-topW},${shoulderY} ${topW},${shoulderY} ${botW},${hipY} ${-botW},${hipY}`}
@@ -165,12 +187,11 @@ export function CharacterShapeSvg({
       />
     );
   } else {
-    // Circle / Round / Organic Capsule Torso
     torsoElement = (
       <ellipse
         cx="0"
         cy={(shoulderY + hipY) / 2}
-        rx={torsoW * (bodySpec.id === 'round' ? 1.15 : 1.0)}
+        rx={torsoW * (char.bodyType === 'round' ? 1.12 : 1.0)}
         ry={torsoH * 0.54}
         fill={color}
         stroke={strokeCol}
@@ -179,9 +200,9 @@ export function CharacterShapeSvg({
     );
   }
 
-  // Render Head based on Shape Language (circle / square / triangle)
+  // Render Head based on Shape Language (circle / square / triangle) + Head Size Slider
   let headElement = null;
-  if (shapeId === 'square' || bodySpec.id === 'boxy') {
+  if (shapeId === 'square') {
     headElement = (
       <rect
         x={-headR}
@@ -217,13 +238,13 @@ export function CharacterShapeSvg({
     );
   }
 
-  const legSpread = Math.max(10, torsoW * 0.55);
+  const legSpread = Math.max(9, torsoW * 0.55);
   const armY = shoulderY + torsoH * 0.22;
 
   return (
     <g>
       {/* Ground contact shadow scaled to character width */}
-      <ellipse cx="0" cy={groundY} rx={Math.max(22, torsoW * 1.3)} ry="9" fill="#000000" opacity="0.45" />
+      <ellipse cx="0" cy={groundY} rx={Math.max(20, torsoW * 1.3)} ry="9" fill="#000000" opacity="0.45" />
 
       {/* Legs */}
       <path
@@ -233,7 +254,7 @@ export function CharacterShapeSvg({
             : `M ${-legSpread * 0.65},${hipY} L ${-legSpread * 0.75},${groundY} M ${legSpread * 0.65},${hipY} L ${legSpread * 0.75},${groundY}`
         }
         stroke={strokeCol}
-        strokeWidth={Math.max(4, Math.min(8, 5 * bodySpec.wMult))}
+        strokeWidth={Math.max(3.5, Math.min(8.5, 5 * dims.wMult))}
         strokeLinecap="round"
       />
 
@@ -248,7 +269,7 @@ export function CharacterShapeSvg({
             : `M ${-torsoW * 0.9},${armY} L ${-torsoW * 1.15},${hipY + 4} M ${torsoW * 0.9},${armY} L ${torsoW * 1.25},${hipY - 4}`
         }
         stroke={strokeCol}
-        strokeWidth={Math.max(3.5, Math.min(7, 4.5 * bodySpec.wMult))}
+        strokeWidth={Math.max(3, Math.min(7.5, 4.5 * dims.wMult))}
         strokeLinecap="round"
       />
 

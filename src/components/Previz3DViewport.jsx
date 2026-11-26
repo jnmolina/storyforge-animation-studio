@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { resolveMood } from '../data/storyEngine';
-import { CHAR_BODY_TYPES } from '../utils/charShapes';
+import { getCharDimensions } from '../utils/charShapes';
 
 /**
  * Interactive 3D Isometric / Orbit Stage Visualizer for the Blender Previz Connector.
@@ -49,7 +49,7 @@ export default function Previz3DViewport({ project, activeShotIndex = 0, onSelec
     });
   }
 
-  const heroBody = CHAR_BODY_TYPES.find((b) => b.id === hero.bodyType) || { heightM: 1.75, wMult: 1.0 };
+  const heroBody = getCharDimensions(hero);
   const subjPos = activeShot?.subjectPos || [0, 0, 0];
   const heroFoot = project3D(subjPos[0], subjPos[1], subjPos[2]);
   const heroHead = project3D(subjPos[0], subjPos[1], subjPos[2] + (heroBody.heightM || 1.65) * 0.92);
