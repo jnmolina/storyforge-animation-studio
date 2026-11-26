@@ -15,8 +15,7 @@ export default function ExportStage() {
 
   return (
     <div className="space-y-6">
-      <div className="glass relative overflow-hidden p-7">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full opacity-40 blur-3xl" style={{ background: 'var(--accent)' }} />
+      <div className="glass relative overflow-hidden p-6">
         <div className="relative flex flex-wrap items-center justify-between gap-6">
           <div className="max-w-xl">
             <div className="eyebrow mb-2">One click · fully offline</div>

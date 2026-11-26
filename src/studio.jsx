@@ -4,6 +4,13 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 export const StudioContext = createContext(null);
 export const useStudio = () => useContext(StudioContext);
 
+export const UI_THEMES = [
+  { id: 'neutral', label: 'Neutral', sub: 'Graphite Darkroom', swatch: '#1A1A1D', dot: '#E06D3B' },
+  { id: 'warm', label: 'Warm', sub: 'Analog 35mm', swatch: '#2A211B', dot: '#D97736' },
+  { id: 'cool', label: 'Cool', sub: 'Cine Slate', swatch: '#161D27', dot: '#4B9FEA' },
+  { id: 'bright', label: 'Bright', sub: 'Daylight Paper', swatch: '#F4F1EA', dot: '#C85228' }
+];
+
 export function Panel({ className = '', children, ...rest }) {
   return (
     <div className={`glass p-5 ${className}`} {...rest}>
@@ -36,21 +43,21 @@ export function SectionTitle({ eyebrow, title, right, className = '' }) {
 export function StageHeader({ step, total, title, desc, actions }) {
   const Icon = step.icon;
   return (
-    <div className="animate-rise mb-7 flex flex-wrap items-end justify-between gap-5">
+    <div className="animate-rise mb-7 flex flex-wrap items-end justify-between gap-5 border-b pb-5" style={{ borderColor: 'var(--border)' }}>
       <div className="max-w-3xl">
-        <div className="mb-3 flex items-center gap-3">
+        <div className="mb-2.5 flex items-center gap-2.5">
           <div
-            className="flex h-11 w-11 items-center justify-center rounded-2xl text-black shadow-lg"
-            style={{ background: `linear-gradient(135deg, ${step.accent}, ${step.accent2})`, boxShadow: `0 10px 30px -10px ${step.accent}` }}
+            className="flex h-9 w-9 items-center justify-center rounded-lg"
+            style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}
           >
-            <Icon className="h-5 w-5" strokeWidth={2.2} />
+            <Icon className="h-4 w-4" strokeWidth={2.2} />
           </div>
           <span className="eyebrow">
-            Stage {step.num} <span className="text-white/25">/ {String(total).padStart(2, '0')}</span>
+            Stage {step.num} <span style={{ color: 'var(--text-3)' }}>/ {String(total).padStart(2, '0')} · {step.label}</span>
           </span>
         </div>
-        <h2 className="h-display text-gradient text-3xl leading-tight md:text-[40px]">{title}</h2>
-        {desc && <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-white/55">{desc}</p>}
+        <h2 className="h-display text-2xl leading-tight md:text-3xl">{title}</h2>
+        {desc && <p className="mt-1.5 max-w-2xl text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>{desc}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -59,15 +66,15 @@ export function StageHeader({ step, total, title, desc, actions }) {
 
 export function StageNav({ prev, next, onGo }) {
   return (
-    <div className="mt-10 flex items-center justify-between border-t border-white/[0.06] pt-6">
+    <div className="mt-10 flex items-center justify-between border-t pt-6" style={{ borderColor: 'var(--border)' }}>
       {prev ? (
         <button onClick={() => onGo(prev.id)} className="group flex items-center gap-3 text-left">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 transition group-hover:border-white/30">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg border transition" style={{ borderColor: 'var(--border)', background: 'var(--panel)' }}>
             <ChevronLeft className="h-4 w-4" />
           </span>
           <span>
-            <span className="eyebrow block">Back</span>
-            <span className="text-sm font-semibold text-white/80">{prev.label}</span>
+            <span className="eyebrow block">Previous</span>
+            <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{prev.label}</span>
           </span>
         </button>
       ) : (
@@ -77,11 +84,11 @@ export function StageNav({ prev, next, onGo }) {
         <button onClick={() => onGo(next.id)} className="group flex items-center gap-3 text-right">
           <span>
             <span className="eyebrow block">Next stage</span>
-            <span className="text-sm font-semibold text-white">{next.label}</span>
+            <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{next.label}</span>
           </span>
           <span
-            className="flex h-10 w-10 items-center justify-center rounded-full text-black transition group-hover:scale-110"
-            style={{ background: `linear-gradient(135deg, ${next.accent}, ${next.accent2})` }}
+            className="flex h-9 w-9 items-center justify-center rounded-lg transition group-hover:translate-x-0.5"
+            style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
           >
             <ChevronRight className="h-4 w-4" />
           </span>
@@ -97,8 +104,8 @@ export function Palette({ colors = [], size = 'md', labels = false }) {
     <div className="flex w-full gap-1">
       {colors.map((c, i) => (
         <div key={i} className="flex-1">
-          <div className={`${h} rounded-md ring-1 ring-white/10`} style={{ background: c }} title={c} />
-          {labels && <div className="mt-1 text-center font-mono text-[9px] text-white/40">{c}</div>}
+          <div className={`${h} rounded-sm border`} style={{ background: c, borderColor: 'var(--border)' }} title={c} />
+          {labels && <div className="mt-1 text-center font-mono text-[9px]" style={{ color: 'var(--text-3)' }}>{c}</div>}
         </div>
       ))}
     </div>
@@ -108,9 +115,9 @@ export function Palette({ colors = [], size = 'md', labels = false }) {
 export function Empty({ icon: Icon, title, children }) {
   return (
     <div className="glass-soft flex flex-col items-center justify-center gap-2 px-6 py-10 text-center">
-      {Icon && <Icon className="h-7 w-7 text-white/30" />}
-      <div className="font-display text-base font-semibold text-white/80">{title}</div>
-      <div className="max-w-md text-sm text-white/45">{children}</div>
+      {Icon && <Icon className="h-7 w-7" style={{ color: 'var(--text-3)' }} />}
+      <div className="font-display text-base font-semibold" style={{ color: 'var(--text)' }}>{title}</div>
+      <div className="max-w-md text-sm" style={{ color: 'var(--text-2)' }}>{children}</div>
     </div>
   );
 }

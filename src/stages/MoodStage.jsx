@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Check, Sparkles, RefreshCw } from 'lucide-react';
 import { MOOD_VARIATIONS, resolveMood } from '../data/storyEngine';
 import { PHOTO_GRADES } from '../utils/color';
-import { useStudio, Panel, Palette, SectionTitle } from '../studio';
+import { useStudio, Panel, Palette, SectionTitle, UI_THEMES } from '../studio';
 import StoryboardCanvas from '../components/StoryboardCanvas';
 import { RefDropzone } from './ReferenceStage';
 
@@ -47,7 +47,7 @@ function MoodCard({ mood, shot, big = false }) {
 }
 
 export default function MoodStage() {
-  const { project, activeShotIndex, setActiveShotIndex, generateRefMoods } = useStudio();
+  const { project, activeShotIndex, setActiveShotIndex, generateRefMoods, uiTheme, setUiTheme } = useStudio();
   const shot = project.shots[activeShotIndex] || project.shots[0];
   const moodRefs = (project.references || []).filter((r) => r.src && r.use !== 'storyboard');
   const custom = project.customMoods ? Object.values(project.customMoods) : [];
@@ -57,13 +57,21 @@ export default function MoodStage() {
   return (
     <div className="space-y-8">
       <Panel className="flex flex-wrap items-center justify-between gap-3 p-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="eyebrow">Test on</span>
           <select className="sf-input w-auto py-1.5" value={activeShotIndex} onChange={(e) => setActiveShotIndex(Number(e.target.value))}>
             {project.shots.map((s, i) => (
               <option key={s.id} value={i}>SH{String(s.number).padStart(2, '0')} · {s.title}</option>
             ))}
           </select>
+          <span className="eyebrow ml-2">UI Workspace Theme:</span>
+          <div className="seg">
+            {UI_THEMES.map((t) => (
+              <button key={t.id} data-on={uiTheme === t.id} onClick={() => setUiTheme(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden w-40 sm:block"><Palette colors={active.palette} size="sm" /></div>

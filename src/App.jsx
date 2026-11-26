@@ -8,7 +8,7 @@ import { generateBlenderPrevizScript } from './utils/blenderGenerator';
 import { studioAudio } from './utils/audioSynth';
 import { ingestFile, ingestUrl, extractUrls, autoMatchShots, moodsFromReferences } from './utils/references';
 import { exportAllZip, exportStepZip, downloadStepFile, exportProjectJson, EXPORT_STEPS } from './utils/exporters';
-import { StudioContext, StageHeader, StageNav, Palette } from './studio';
+import { StudioContext, StageHeader, StageNav, Palette, UI_THEMES } from './studio';
 import SketchPadModal from './components/SketchPadModal';
 import IdeaStage from './stages/IdeaStage';
 import WorldStage from './stages/WorldStage';
@@ -39,6 +39,12 @@ const normalize = (p) => ({ references: [], ...p, music: { ...DEFAULT_MUSIC, ...
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('storyforge_tab') || 'idea');
+  const [uiTheme, setUiTheme] = useState(() => localStorage.getItem('storyforge_ui_theme') || 'neutral');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', uiTheme);
+    localStorage.setItem('storyforge_ui_theme', uiTheme);
+  }, [uiTheme]);
   const [project, setProject] = useState(() => {
     try {
       const saved = localStorage.getItem('storyforge_active_project_v1');
@@ -422,34 +428,65 @@ Lighting mood: ${mood.name} — ${mood.lightingNotes}${ref ? '\nUse the attached
   const exportable = EXPORT_STEPS.some((s) => s.id === step.id);
 
   return (
-    <StudioContext.Provider value={ctx}>
-      <div className="relative min-h-screen" style={{ '--accent': step.accent, '--accent-2': step.accent2 }}>
-        <div className="aurora" />
+    <StudioContext.Provider value={{ ...ctx, uiTheme, setUiTheme }}>
+      <div className="relative min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
         <div className="grain" />
 
         {/* Sidebar */}
         <aside
-          className={`fixed inset-y-0 left-0 z-40 flex w-[272px] flex-col border-r border-white/[0.06] bg-[#0a0910]/85 backdrop-blur-2xl transition-transform lg:translate-x-0 ${navOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          style={{ background: 'var(--bg-elev)', borderColor: 'var(--border)' }}
+          className={`fixed inset-y-0 left-0 z-40 flex w-[264px] flex-col border-r transition-transform lg:translate-x-0 ${navOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
           <div className="flex items-center gap-3 px-5 pb-4 pt-5">
-            <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-amber-300 via-rose-400 to-violet-500 shadow-lg shadow-rose-500/20">
-              <Clapperboard className="h-5 w-5 text-black" strokeWidth={2.4} />
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-lg"
+              style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+            >
+              <Clapperboard className="h-4 w-4" strokeWidth={2.4} />
             </div>
             <div>
-              <div className="font-display text-[17px] font-bold leading-none tracking-tight">StoryForge</div>
-              <div className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.2em] text-white/40">Story-first studio</div>
+              <div className="font-display text-base font-bold leading-none tracking-tight" style={{ color: 'var(--text)' }}>StoryForge</div>
+              <div className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>Animation Studio</div>
             </div>
-            <button className="ml-auto text-white/40 lg:hidden" onClick={() => setNavOpen(false)}>
+            <button className="ml-auto lg:hidden" style={{ color: 'var(--text-3)' }} onClick={() => setNavOpen(false)}>
               <X className="h-5 w-5" />
             </button>
           </div>
 
+          {/* Studio Theme Switcher in Sidebar */}
+          <div className="mx-4 mb-3">
+            <div className="eyebrow mb-1.5 px-0.5">Studio Theme</div>
+            <div className="grid grid-cols-4 gap-1 rounded-lg p-1" style={{ background: 'var(--panel-soft)', border: '1px solid var(--border)' }}>
+              {UI_THEMES.map((t) => {
+                const active = uiTheme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setUiTheme(t.id)}
+                    title={`${t.label} — ${t.sub}`}
+                    className="flex flex-col items-center gap-1 rounded-md py-1.5 text-[10px] font-semibold transition"
+                    style={
+                      active
+                        ? { background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--accent)' }
+                        : { color: 'var(--text-3)', border: '1px solid transparent' }
+                    }
+                  >
+                    <span className="flex items-center gap-0.5">
+                      <span className="h-2.5 w-2.5 rounded-full border border-black/20" style={{ background: t.swatch }} />
+                      <span className="h-2 w-2 rounded-full" style={{ background: t.dot }} />
+                    </span>
+                    <span>{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Project card */}
-          <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03]">
-            <div className="h-1.5 w-full" style={{ background: mood.bgGradient }} />
+          <div className="mx-4 mb-4 overflow-hidden rounded-xl" style={{ background: 'var(--panel)', border: '1px solid var(--border)' }}>
             <div className="p-3.5">
-              <div className="eyebrow mb-1">Now editing</div>
-              <div className="line-clamp-2 text-sm font-semibold leading-snug text-white">{project.title}</div>
+              <div className="eyebrow mb-1">Active Project</div>
+              <div className="line-clamp-2 text-sm font-semibold leading-snug" style={{ color: 'var(--text)' }}>{project.title}</div>
               <div className="mt-2 flex flex-wrap gap-1">
                 <span className="chip">{project.shots.length} shots</span>
                 <span className="chip">{totalDurationSec.toFixed(1)}s</span>
@@ -461,39 +498,50 @@ Lighting mood: ${mood.name} — ${mood.lightingNotes}${ref ? '\nUse the attached
 
           {/* Pipeline */}
           <nav className="flex-1 overflow-y-auto px-3 pb-4">
-            <div className="eyebrow mb-2 px-2">Pipeline</div>
-            <div className="relative">
-              <div className="absolute bottom-4 left-[22px] top-4 w-px bg-white/[0.07]" />
-              {STEPS.map((s, i) => {
+            <div className="eyebrow mb-1.5 px-2">Pipeline</div>
+            <div className="space-y-0.5">
+              {STEPS.map((s) => {
                 const Icon = s.icon;
                 const on = s.id === activeTab;
-                const done = i < stepIdx;
                 return (
                   <button
                     key={s.id}
                     onClick={() => go(s.id)}
-                    className={`group relative mb-0.5 flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition ${on ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'}`}
+                    className="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition"
+                    style={
+                      on
+                        ? { background: 'var(--panel)', border: '1px solid var(--border-strong)' }
+                        : { border: '1px solid transparent' }
+                    }
                   >
                     <span
-                      className={`relative z-10 flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg transition ${on ? 'text-black shadow-lg' : done ? 'bg-white/[0.08] text-white/70' : 'bg-[#121019] text-white/35 ring-1 ring-white/[0.07] group-hover:text-white/70'}`}
-                      style={on ? { background: `linear-gradient(135deg, ${s.accent}, ${s.accent2})`, boxShadow: `0 6px 20px -6px ${s.accent}` } : {}}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition"
+                      style={
+                        on
+                          ? { background: 'var(--accent)', color: 'var(--accent-fg)' }
+                          : { background: 'var(--panel-soft)', color: 'var(--text-3)', border: '1px solid var(--border)' }
+                      }
                     >
-                      <Icon className="h-[15px] w-[15px]" strokeWidth={2.2} />
+                      <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
                     </span>
                     <span className="min-w-0">
-                      <span className={`block text-[13px] font-semibold ${on ? 'text-white' : 'text-white/60 group-hover:text-white/85'}`}>{s.label}</span>
-                      <span className="block truncate text-[10.5px] text-white/30">{s.sub}</span>
+                      <span className="block text-[12.5px] font-semibold" style={{ color: on ? 'var(--text)' : 'var(--text-2)' }}>{s.label}</span>
+                      <span className="block truncate text-[10px]" style={{ color: 'var(--text-3)' }}>{s.sub}</span>
                     </span>
-                    <span className="ml-auto font-mono text-[9.5px] text-white/20">{s.num}</span>
+                    <span className="ml-auto font-mono text-[9.5px]" style={{ color: on ? 'var(--accent)' : 'var(--text-3)' }}>{s.num}</span>
                   </button>
                 );
               })}
             </div>
           </nav>
 
-          <div className="space-y-2 border-t border-white/[0.06] p-4">
-            <button onClick={() => go('previz')} className="flex w-full items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2 text-left text-[11px] text-white/55 hover:bg-white/[0.06]">
-              <span className={`h-2 w-2 rounded-full ${blenderStatus.connected ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-amber-400'}`} />
+          <div className="space-y-2 border-t p-4" style={{ borderColor: 'var(--border)' }}>
+            <button
+              onClick={() => go('previz')}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] transition"
+              style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text-2)' }}
+            >
+              <span className={`h-2 w-2 rounded-full ${blenderStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
               Blender {blenderStatus.connected ? 'connected' : 'offline'}
             </button>
             <button onClick={runExportAll} disabled={!!exportBusy} className="btn btn-ghost w-full">
@@ -505,30 +553,77 @@ Lighting mood: ${mood.name} — ${mood.lightingNotes}${ref ? '\nUse the attached
         {navOpen && <div className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={() => setNavOpen(false)} />}
 
         {/* Main */}
-        <div className="relative z-10 lg:pl-[272px]">
-          <header className="sticky top-0 z-20 border-b border-white/[0.05] bg-[#07060b]/70 backdrop-blur-xl">
+        <div className="relative z-10 lg:pl-[264px]">
+          <header
+            className="sticky top-0 z-20 border-b backdrop-blur-md"
+            style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--bg) 88%, transparent)' }}
+          >
             <div className="mx-auto flex max-w-[1500px] items-center gap-2 sm:gap-3 px-3.5 py-2.5 sm:px-5 sm:py-3 md:px-8">
-              <button className="shrink-0 text-white/60 lg:hidden" onClick={() => setNavOpen(true)} aria-label="Open menu">
+              <button className="shrink-0 lg:hidden" style={{ color: 'var(--text-2)' }} onClick={() => setNavOpen(true)} aria-label="Open menu">
                 <Menu className="h-5 w-5" />
               </button>
               <div className="flex min-w-0 items-center gap-2 text-sm">
-                <span className="hidden truncate text-white/35 sm:inline max-w-[180px]">{project.title.split('(')[0].trim()}</span>
-                <span className="hidden text-white/20 sm:inline">/</span>
-                <span className="truncate font-semibold text-white">{step.label}</span>
+                <span className="hidden truncate sm:inline max-w-[180px]" style={{ color: 'var(--text-3)' }}>{project.title.split('(')[0].trim()}</span>
+                <span className="hidden sm:inline" style={{ color: 'var(--border-strong)' }}>/</span>
+                <span className="truncate font-semibold" style={{ color: 'var(--text)' }}>{step.label}</span>
               </div>
-              {/* progress */}
-              <div className="ml-4 hidden flex-1 items-center gap-1 md:flex">
+
+              {/* Clean monochrome/accent progress steps */}
+              <div className="ml-4 hidden flex-1 items-center gap-1 xl:flex">
                 {STEPS.map((s, i) => (
                   <button
                     key={s.id}
                     onClick={() => go(s.id)}
                     title={s.label}
-                    className="h-1 flex-1 rounded-full transition"
-                    style={{ background: i <= stepIdx ? `linear-gradient(90deg, ${s.accent}, ${s.accent2})` : 'rgba(255,255,255,0.07)' }}
+                    className="h-1 flex-1 rounded-sm transition"
+                    style={{ background: i <= stepIdx ? 'var(--accent)' : 'var(--border)' }}
                   />
                 ))}
               </div>
+
               <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+                {/* Top Header Theme Pill Switcher (Warm / Cool / Neutral / Bright) */}
+                <div
+                  className="hidden md:flex items-center gap-0.5 rounded-lg p-0.5"
+                  style={{ background: 'var(--panel-soft)', border: '1px solid var(--border)' }}
+                  aria-label="Theme Switcher"
+                >
+                  {UI_THEMES.map((t) => {
+                    const active = uiTheme === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setUiTheme(t.id)}
+                        title={`${t.label} Theme (${t.sub})`}
+                        className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
+                        style={
+                          active
+                            ? { background: 'var(--panel)', color: 'var(--text)', boxShadow: '0 1px 2px rgba(0,0,0,0.18)' }
+                            : { color: 'var(--text-3)' }
+                        }
+                      >
+                        <span className="h-2 w-2 rounded-full border border-black/20" style={{ background: t.dot }} />
+                        <span>{t.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Mobile quick theme cycle button */}
+                <button
+                  onClick={() => {
+                    const idx = UI_THEMES.findIndex((t) => t.id === uiTheme);
+                    const next = UI_THEMES[(idx + 1) % UI_THEMES.length];
+                    setUiTheme(next.id);
+                    notify(`Theme: ${next.label} (${next.sub})`);
+                  }}
+                  className="btn btn-ghost btn-sm px-2 md:hidden"
+                  title="Switch Theme (Neutral / Warm / Cool / Bright)"
+                >
+                  <PaletteIcon className="h-3.5 w-3.5 text-accent" />
+                  <span className="text-[10px] capitalize">{uiTheme}</span>
+                </button>
+
                 <div className="relative">
                   <button onClick={() => setShowKey(!showKey)} className={`btn btn-sm px-2.5 sm:px-3 ${geminiApiKey ? 'btn-accent-soft' : 'btn-ghost'}`} title="Gemini AI Key">
                     <KeyRound className="h-3.5 w-3.5" />
@@ -539,7 +634,7 @@ Lighting mood: ${mood.name} — ${mood.lightingNotes}${ref ? '\nUse the attached
                       <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
                         <Wand2 className="h-4 w-4 text-accent" /> Optional Gemini key
                       </div>
-                      <p className="mb-3 text-xs text-white/50">Unlocks AI story expansion and AI storyboard panels. Everything else works offline. Kept only for this browser session.</p>
+                      <p className="mb-3 text-xs" style={{ color: 'var(--text-2)' }}>Unlocks AI story expansion and AI storyboard panels. Everything else works offline. Kept only for this browser session.</p>
                       <input type="password" className="sf-input" value={geminiApiKey} onChange={(e) => setGeminiApiKey(e.target.value.trim())} placeholder="AIza…" />
                       <div className="mt-3 flex justify-end">
                         <button className="btn btn-primary btn-sm" onClick={() => setShowKey(false)}>Done</button>
@@ -572,7 +667,8 @@ Lighting mood: ${mood.name} — ${mood.lightingNotes}${ref ? '\nUse the attached
         {/* Mobile Bottom Thumb Dock for instant 1-tap switching across all 10 stages */}
         <nav
           aria-label="Mobile pipeline stages"
-          className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0a0910]/95 px-2 py-1.5 backdrop-blur-2xl lg:hidden"
+          style={{ background: 'var(--bg-elev)', borderColor: 'var(--border)' }}
+          className="fixed inset-x-0 bottom-0 z-30 border-t px-2 py-1.5 lg:hidden"
         >
           <div className="no-scrollbar flex items-center gap-1 overflow-x-auto">
             {STEPS.map((s) => {
@@ -582,15 +678,18 @@ Lighting mood: ${mood.name} — ${mood.lightingNotes}${ref ? '\nUse the attached
                 <button
                   key={s.id}
                   onClick={() => go(s.id)}
-                  className={`flex shrink-0 flex-col items-center gap-0.5 rounded-xl px-2.5 py-1.5 text-[10px] font-medium transition ${
-                    on ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80'
-                  }`}
+                  className="flex shrink-0 flex-col items-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[10px] font-medium transition"
+                  style={
+                    on
+                      ? { background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border-strong)' }
+                      : { color: 'var(--text-3)' }
+                  }
                 >
                   <span
-                    className="flex h-6 w-6 items-center justify-center rounded-lg"
+                    className="flex h-6 w-6 items-center justify-center rounded-md"
                     style={
                       on
-                        ? { background: `linear-gradient(135deg, ${s.accent}, ${s.accent2})`, color: '#000' }
+                        ? { background: 'var(--accent)', color: 'var(--accent-fg)' }
                         : {}
                     }
                   >
