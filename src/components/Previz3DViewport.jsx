@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { resolveMood } from '../data/storyEngine';
+import { CHAR_BODY_TYPES } from '../utils/charShapes';
 
 /**
  * Interactive 3D Isometric / Orbit Stage Visualizer for the Blender Previz Connector.
@@ -48,9 +49,10 @@ export default function Previz3DViewport({ project, activeShotIndex = 0, onSelec
     });
   }
 
+  const heroBody = CHAR_BODY_TYPES.find((b) => b.id === hero.bodyType) || { heightM: 1.75, wMult: 1.0 };
   const subjPos = activeShot?.subjectPos || [0, 0, 0];
   const heroFoot = project3D(subjPos[0], subjPos[1], subjPos[2]);
-  const heroHead = project3D(subjPos[0], subjPos[1], subjPos[2] + 1.55);
+  const heroHead = project3D(subjPos[0], subjPos[1], subjPos[2] + (heroBody.heightM || 1.65) * 0.92);
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-slate-800 bg-[#07090E]">
@@ -215,26 +217,46 @@ export default function Previz3DViewport({ project, activeShotIndex = 0, onSelec
           );
         })()}
 
-        {/* Primary Character Proxy Capsule (`SF_Char_Root`) */}
+        {/* Primary Character Proxy Capsule (`SF_Char_Root`) reflecting Shape & Body Build */}
         <g>
-          <ellipse cx={heroFoot[0]} cy={heroFoot[1]} rx="16" ry="8" fill="#F59E0B" opacity="0.28" />
+          <ellipse cx={heroFoot[0]} cy={heroFoot[1]} rx={16 * (heroBody.wMult || 1)} ry="8" fill="#F59E0B" opacity="0.28" />
           <line
             x1={heroFoot[0]}
             y1={heroFoot[1]}
             x2={heroHead[0]}
             y2={heroHead[1]}
             stroke={hero.colorHex || '#F59E0B'}
-            strokeWidth="16"
-            strokeLinecap="round"
+            strokeWidth={16 * (heroBody.wMult || 1)}
+            strokeLinecap={hero.shape === 'square' || hero.bodyType === 'boxy' ? 'butt' : 'round'}
           />
-          <circle
-            cx={heroHead[0]}
-            cy={heroHead[1] - 5}
-            r="9.5"
-            fill="#FDE68A"
-            stroke="#0F172A"
-            strokeWidth="2"
-          />
+          {hero.shape === 'square' || hero.bodyType === 'boxy' ? (
+            <rect
+              x={heroHead[0] - 9}
+              y={heroHead[1] - 14}
+              width="18"
+              height="18"
+              rx="3"
+              fill="#FDE68A"
+              stroke="#0F172A"
+              strokeWidth="2"
+            />
+          ) : hero.shape === 'triangle' ? (
+            <polygon
+              points={`${heroHead[0]},${heroHead[1] - 16} ${heroHead[0] + 11},${heroHead[1] + 4} ${heroHead[0] - 11},${heroHead[1] + 4}`}
+              fill="#FDE68A"
+              stroke="#0F172A"
+              strokeWidth="2"
+            />
+          ) : (
+            <circle
+              cx={heroHead[0]}
+              cy={heroHead[1] - 5}
+              r="9.5"
+              fill="#FDE68A"
+              stroke="#0F172A"
+              strokeWidth="2"
+            />
+          )}
           <text
             x={heroHead[0]}
             y={heroHead[1] - 20}
@@ -244,7 +266,7 @@ export default function Previz3DViewport({ project, activeShotIndex = 0, onSelec
             fontWeight="bold"
             fontFamily="JetBrains Mono, monospace"
           >
-            {hero.name}
+            {hero.name} ({hero.shape || 'circle'} · {hero.bodyType || 'std'})
           </text>
         </g>
 

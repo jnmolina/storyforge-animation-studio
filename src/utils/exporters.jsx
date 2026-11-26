@@ -145,6 +145,7 @@ function castMarkdown(p) {
 ${(p.characters || [])
   .map(
     (c) => `### ${c.name} — ${c.archetype}
+- **Shape Language:** ${(c.shape || 'circle').toUpperCase()}  ·  **Body Build:** ${(c.bodyType || 'tall').toUpperCase()}
 - **Silhouette:** ${c.silhouette}
 - **Goal:** ${c.motivation}
 - **Acting quirk:** ${c.quirk}
@@ -155,7 +156,7 @@ ${(p.characters || [])
 ## Set — ${env.name || ''}
 - **Setting:** ${env.settingType || ''}
 - **Time / atmosphere:** ${env.timeOfDay || ''}
-- **Props:** ${(env.props || []).join(', ')}
+- **Props:** ${(env.props || []).map((pr, idx) => `${pr} [${(env.propShapes?.[idx] || 'box').toUpperCase()}]`).join(', ')}
 `;
 }
 
@@ -300,7 +301,7 @@ export async function buildStepFiles(stepId, ctx) {
       add('cast_and_set.md', castMarkdown(p));
       add(
         'characters.csv',
-        toCsv([['name', 'archetype', 'silhouette', 'motivation', 'quirk', 'color'], ...(p.characters || []).map((c) => [c.name, c.archetype, c.silhouette, c.motivation, c.quirk, c.colorHex])])
+        toCsv([['name', 'shape', 'body_type', 'archetype', 'silhouette', 'motivation', 'quirk', 'color'], ...(p.characters || []).map((c) => [c.name, c.shape || 'circle', c.bodyType || 'tall', c.archetype, c.silhouette, c.motivation, c.quirk, c.colorHex])])
       );
       add('environment.json', JSON.stringify(p.environment || {}, null, 2));
       break;

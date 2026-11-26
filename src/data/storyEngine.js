@@ -383,11 +383,13 @@ export const STARTER_PRESETS = [
         id: 'char-1',
         name: 'Leo',
         archetype: 'Sleep-Deprived Commuter',
-        silhouette: 'Capsule torso, oversized hoodie, lanky legs, messy bedhead',
+        shape: 'circle',
+        bodyType: 'tall',
+        silhouette: 'Circle shape (Friendly · Soft · Organic) · Tall build (2.05m)',
         motivation: 'Catch the 8:02 bus without spilling coffee',
         quirk: 'Taps left foot impatiently when concentrating; eyes dart 4f before head turns',
         colorHex: '#F59E0B',
-        scale: [0.85, 0.85, 1.75]
+        scale: [0.82, 0.82, 2.05]
       }
     ],
     environment: {
@@ -496,21 +498,25 @@ export const STARTER_PRESETS = [
         id: 'char-1',
         name: 'Jax',
         archetype: 'Rooftop Courier on the Run',
-        silhouette: 'Lean athletic build, reflective windbreaker, messenger satchel for secondary follow-through',
+        shape: 'triangle',
+        bodyType: 'thin',
+        silhouette: 'Triangle shape (Agile · Sharp · Dynamic) · Thin build (1.85m)',
         motivation: 'Break line-of-sight before the alley perimeter locks down',
         quirk: 'Checks wrist timer mid-sprint; leads direction changes with sharp head snaps',
         colorHex: '#38BDF8',
-        scale: [0.8, 0.8, 1.8]
+        scale: [0.54, 0.54, 1.85]
       },
       {
         id: 'char-2',
         name: 'Interceptor Unit 04',
         archetype: 'Pursuing Patrol Officer / Cruiser',
-        silhouette: 'Broad tactical silhouette + low-slung pursuit cruiser with strobe bar',
+        shape: 'square',
+        bodyType: 'wide',
+        silhouette: 'Square shape (Sturdy · Grounded · Stubborn) · Wide build (1.65m)',
         motivation: 'Box the runner into the dead-end service alley',
         quirk: 'Sweeping spotlight beam cuts across wet brick walls',
         colorHex: '#F43F5E',
-        scale: [1.1, 1.1, 1.85]
+        scale: [1.55, 1.15, 1.65]
       }
     ],
     environment: {
@@ -638,11 +644,13 @@ export const STARTER_PRESETS = [
         id: 'char-1',
         name: 'Maya',
         archetype: 'Overtime Studio Designer',
-        silhouette: 'Rounded cardigan silhouette, big glasses, tote bag',
+        shape: 'circle',
+        bodyType: 'round',
+        silhouette: 'Circle shape (Friendly · Soft · Organic) · Round build (1.45m)',
         motivation: 'Claim the last caramel bar on row B-4 at 11:45 PM',
         quirk: 'Squints like a cowboy in a western standoff before pressing buttons',
         colorHex: '#A855F7',
-        scale: [0.85, 0.85, 1.68]
+        scale: [1.42, 1.42, 1.45]
       }
     ],
     environment: {

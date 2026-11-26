@@ -130,26 +130,51 @@ def build_storyforge_previz():
     back_wall.data.materials.append(wall_mat)
     link_only_to_collection(back_wall, previz_col)
 
-    # Create recognizable simple props from project environment
+    # Create recognizable simple props from project environment with their chosen layout shapes
     props = PROJECT_DATA["environment"].get("props", [])
+    prop_shapes = PROJECT_DATA["environment"].get("propShapes", [])
     for idx, prop_label in enumerate(props[:4]):
         px = -2.2 + idx * 1.5
         py = 1.6 if idx % 2 == 0 else 0.8
-        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, py, 0.45))
+        p_shape = prop_shapes[idx] if idx < len(prop_shapes) else "box"
+        if p_shape == "circle":
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.5, location=(px, py, 0.5))
+        elif p_shape == "triangle":
+            bpy.ops.mesh.primitive_cone_add(radius1=0.55, depth=1.1, location=(px, py, 0.55))
+        elif p_shape == "tall":
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, py, 1.0))
+            bpy.context.active_object.scale = (0.85, 0.35, 2.0)
+        elif p_shape == "wide":
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, py, 0.4))
+            bpy.context.active_object.scale = (1.6, 0.75, 0.8)
+        else:
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, py, 0.45))
+            bpy.context.active_object.scale = (0.9, 0.6, 0.9)
         p_obj = bpy.context.active_object
         p_obj.name = f"SF_Prop_{idx+1}_{prop_label[:14].replace(' ', '_')}"
-        p_obj.scale = (0.9, 0.6, 0.9)
         p_obj.data.materials.append(prop_mat if idx % 2 == 0 else accent_mat)
         link_only_to_collection(p_obj, previz_col)
 
-    # 3. Create Character Proxy Mannequins (Torso + Head + Facing Visor)
+    # 3. Create Character Proxy Mannequins matching Shape Language (circle/square/triangle) & Body Type (tall/short/thin/wide/round/boxy)
     char_rigs = []
     characters = PROJECT_DATA.get("characters", [])
     if not characters:
-        characters = [{"name": "Hero", "colorHex": "#F59E0B", "scale": [0.85, 0.85, 1.75]}]
+        characters = [{"name": "Hero", "colorHex": "#F59E0B", "shape": "circle", "bodyType": "tall", "scale": [0.85, 0.85, 1.75]}]
+
+    body_Presets = {
+        "tall":  (0.82, 0.82, 1.26),
+        "short": (0.95, 0.95, 0.68),
+        "thin":  (0.54, 0.54, 1.14),
+        "wide":  (1.55, 1.15, 0.96),
+        "round": (1.42, 1.42, 0.86),
+        "boxy":  (1.35, 1.05, 1.02)
+    }
 
     for c_idx, char_data in enumerate(characters):
         c_name = char_data.get("name", f"Char_{c_idx+1}")
+        c_shape = char_data.get("shape", "circle")
+        c_body = char_data.get("bodyType", "tall")
+        bx, by, bz = body_Presets.get(c_body, (1.0, 1.0, 1.0))
         c_mat = make_material(f"SF_CharMat_{c_name}", hex_to_rgb(char_data.get("colorHex", "#F59E0B")), roughness=0.35)
 
         root = bpy.data.objects.new(f"SF_Char_{c_name}_Root", None)
@@ -157,24 +182,41 @@ def build_storyforge_previz():
         root.empty_display_size = 0.65
         previz_col.objects.link(root)
 
-        # Torso block
-        bpy.ops.mesh.primitive_cylinder_add(radius=0.28, depth=1.1, location=(0, 0, 0.65))
-        torso = bpy.context.active_object
-        torso.name = f"SF_Char_{c_name}_Torso"
+        torso_z = 0.65 * bz
+        head_z = 1.48 * bz
+
+        # Torso block matching shape language (circle / square / triangle)
+        if c_shape == "square" or c_body == "boxy":
+            bpy.ops.mesh.primitive_cube_add(size=0.58, location=(0, 0, torso_z))
+            torso = bpy.context.active_object
+            torso.scale = (bx, by, 1.85 * bz)
+        elif c_shape == "triangle":
+            bpy.ops.mesh.primitive_cone_add(radius1=0.36 * bx, radius2=0.14 * bx, depth=1.1 * bz, location=(0, 0, torso_z))
+            torso = bpy.context.active_object
+        else:
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.32, location=(0, 0, torso_z))
+            torso = bpy.context.active_object
+            torso.scale = (bx, by, 1.7 * bz)
+        torso.name = f"SF_Char_{c_name}_Torso_{c_shape}_{c_body}"
         torso.data.materials.append(c_mat)
         torso.parent = root
         link_only_to_collection(torso, previz_col)
 
-        # Head sphere
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.24, location=(0, 0, 1.48))
+        # Head matching shape language
+        if c_shape == "square" or c_body == "boxy":
+            bpy.ops.mesh.primitive_cube_add(size=0.44, location=(0, 0, head_z))
+        elif c_shape == "triangle":
+            bpy.ops.mesh.primitive_cone_add(radius1=0.26, depth=0.48, location=(0, 0, head_z))
+        else:
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.24, location=(0, 0, head_z))
         head = bpy.context.active_object
-        head.name = f"SF_Char_{c_name}_Head"
+        head.name = f"SF_Char_{c_name}_Head_{c_shape}"
         head.data.materials.append(c_mat)
         head.parent = root
         link_only_to_collection(head, previz_col)
 
         # Eye-line direction cone so animators see head orientation immediately
-        bpy.ops.mesh.primitive_cone_add(radius1=0.10, depth=0.32, location=(0, -0.28, 1.48), rotation=(math.radians(90), 0, 0))
+        bpy.ops.mesh.primitive_cone_add(radius1=0.10, depth=0.32, location=(0, -0.28, head_z), rotation=(math.radians(90), 0, 0))
         visor = bpy.context.active_object
         visor.name = f"SF_Char_{c_name}_Eyeline"
         visor.data.materials.append(accent_mat)

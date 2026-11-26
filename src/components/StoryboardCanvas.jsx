@@ -1,5 +1,6 @@
 import React from 'react';
 import { resolveMood } from '../data/storyEngine';
+import { CharacterShapeSvg } from '../utils/charShapes';
 
 // Framing crop applied to a user's reference image per shot type ("auto-frame").
 export const REF_FRAME_SCALE = { EWS: 1, WS: 1.05, OTS: 1.2, MS: 1.35, CU: 1.8, ECU: 2.6 };
@@ -181,12 +182,18 @@ export function StoryboardSvg({
 
             <g transform={`translate(${320 + panX}, ${(shot.shotType === 'ECU' ? 210 : shot.shotType === 'CU' ? 245 : 235) + panY}) scale(${finalScale})`}>
               {secondChar && (
-                <g transform="translate(-115, -35) scale(0.72)" opacity="0.85">
-                  <rect x="-38" y="-45" width="76" height="45" rx="8" fill={secondChar.colorHex || '#F43F5E'} stroke={palette[0]} strokeWidth="2" />
-                  <circle cx="-22" cy="-20" r="7" fill="#FEF08A" />
-                  <circle cx="22" cy="-20" r="7" fill="#FEF08A" />
-                  <rect x="-26" y="-53" width="24" height="7" rx="3" fill="#EF4444" />
-                  <rect x="2" y="-53" width="24" height="7" rx="3" fill="#3B82F6" />
+                <g transform="translate(-115, -20) scale(0.76)" opacity="0.88">
+                  {/cruiser|car|unit/i.test(secondChar.name + ' ' + secondChar.archetype) && !secondChar.shape && !secondChar.bodyType ? (
+                    <g>
+                      <rect x="-38" y="-45" width="76" height="45" rx="8" fill={secondChar.colorHex || '#F43F5E'} stroke={palette[0]} strokeWidth="2" />
+                      <circle cx="-22" cy="-20" r="7" fill="#FEF08A" />
+                      <circle cx="22" cy="-20" r="7" fill="#FEF08A" />
+                      <rect x="-26" y="-53" width="24" height="7" rx="3" fill="#EF4444" />
+                      <rect x="2" y="-53" width="24" height="7" rx="3" fill="#3B82F6" />
+                    </g>
+                  ) : (
+                    <CharacterShapeSvg char={secondChar} palette={palette} isAction={false} />
+                  )}
                 </g>
               )}
               {shot.shotType === 'ECU' && isShoe ? (
@@ -202,27 +209,7 @@ export function StoryboardSvg({
                   </g>
                 </g>
               ) : (
-                <g>
-                  <ellipse cx="0" cy="42" rx="42" ry="11" fill="#000000" opacity="0.45" />
-                  <path
-                    d={isChase ? 'M -24,-42 L 28,-48 L 36,16 L -18,22 Z' : 'M -28,-44 C -28,-54 28,-54 28,-44 L 32,20 L -32,20 Z'}
-                    fill={hero.colorHex || '#F59E0B'}
-                    stroke={palette[0]}
-                    strokeWidth="2.2"
-                  />
-                  <path
-                    d={isChase ? 'M -10,18 L -32,44 M 18,16 L 44,38 M 22,-36 L 56,-22' : 'M -14,20 L -18,44 M 14,20 L 18,44 M 22,-32 L 42,-8'}
-                    stroke={palette[0]}
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                  />
-                  <g transform={isChase ? 'translate(14, -74) rotate(12)' : 'translate(4, -74)'}>
-                    <circle cx="0" cy="0" r="23" fill={palette[1]} stroke={palette[4]} strokeWidth="2.5" />
-                    <path d="M -22,-3 Q 6,-9 22,-2 M 5,-22 Q 11,0 5,22" fill="none" stroke={palette[4]} strokeWidth="1.6" strokeOpacity="0.65" />
-                    <circle cx="3" cy="-4" r="2.6" fill={palette[4]} />
-                    <circle cx="13" cy="-4" r="2.6" fill={palette[4]} />
-                  </g>
-                </g>
+                <CharacterShapeSvg char={hero} palette={palette} isAction={isChase} />
               )}
             </g>
 
